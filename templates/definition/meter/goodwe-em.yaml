@@ -1,0 +1,100 @@
+template: goodwe-em
+products:
+  - brand: GoodWe
+    description:
+      generic: ES/EM/BP Hybrid Inverter
+capabilities: ["battery-control"]
+params:
+  - name: usage
+    choice: ["grid", "pv", "battery"]
+  - name: modbus
+    choice: ["rs485", "udp"]
+    baudrate: 9600
+    id: 247
+  - name: battery
+    default: 1
+    validvalues:
+      - 1
+  - name: capacity
+    advanced: true
+render: |
+  type: custom
+  {{- if eq .usage "grid" }}
+  power:
+    source: modbus
+    {{- include "modbus" . | indent 2 }}
+    register: # manual non-sunspec register configuration
+      address: 1304 # PGRID
+      type: holding
+      decode: int16
+  {{- end }}
+  {{- if eq .usage "pv" }}
+  power:
+    source: calc
+    add:
+      - source: calc
+        mul:
+        - source: modbus
+        {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1280
+          type: holding
+          decode: uint16
+        - source: modbus
+        {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1281
+          type: holding
+          decode: uint16
+      - source: calc
+        mul:
+        - source: modbus
+        {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1283
+          type: holding
+          decode: uint16
+        - source: modbus
+        {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1284
+          type: holding
+          decode: uint16
+      - source: calc
+        mul:
+        - source: modbus
+        {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1337
+          type: holding
+          decode: uint16
+        - source: modbus
+        {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1338
+          type: holding
+          decode: uint16
+  {{- end }}
+  {{- if eq .usage "battery" }}
+  power:
+    source: calc
+    mul:
+      - source: modbus
+      {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1286
+          type: holding
+          decode: uint16
+      - source: modbus
+      {{- include "modbus" . | indent 4 }}
+        register:
+          address: 1290
+          type: holding
+          decode: uint16
+	  
+  soc: # Batterie SOC (%)
+    source: modbus
+    register:
+      address: 1294
+      type: holding
+      decode: uint16
